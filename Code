@@ -1,0 +1,124 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+
+def monitor_competitors_activity():
+  
+    driver = webdriver.Chrome('path_to_chromedriver')
+    
+    # Log in to LinkedIn
+    driver.get('https://www.linkedin.com')
+    # Perform login steps here
+    
+   
+    decision_maker_profiles = [
+        'https://www.linkedin.com/in/decision-maker1',
+        'https://www.linkedin.com/in/decision-maker2',
+        
+    ]
+    
+    new_connections = []
+    
+    for profile_url in decision_maker_profiles:
+        # Visit the decision-maker's profile
+        driver.get(profile_url)
+        time.sleep(2)  # Add a delay to allow the page to load
+        
+        connections_section = driver.find_element_by_xpath("//section[@class='pv-recent-activity-section-v2']")
+        connections_section.click()
+        
+        scrollable_div = driver.find_element_by_xpath("//div[@class='pv-recent-activity-section-v2__scroll-list artdeco-list ember-view']")
+        while True:
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scrollable_div)
+            time.sleep(2)  # Add a delay to allow the next set of connections to load
+            # Check if all connections have been loaded by comparing the previous and current scroll heights
+            if scrollable_div.get_attribute("scrollHeight") == scroll_height:
+                break
+            scroll_height = scrollable_div.get_attribute("scrollHeight")
+        
+        connections = driver.find_elements_by_xpath("//div[contains(@class,'artdeco-list__item')]")
+        for connection in connections:
+            connection_url = connection.find_element_by_tag_name('a').get_attribute('href')
+            new_connections.append({'profile_url': connection_url})
+            
+    driver.quit()
+    return new_connections
+
+def analyze_profiles(connections):
+    driver = webdriver.Chrome('path_to_chromedriver')
+    
+    for connection in connections:
+        profile_url = connection['profile_url']
+        
+        # Visit the connection's profile
+        driver.get(profile_url)
+        
+        about_section = driver.find_element_by_xpath("//section[@class='about-section']")
+        about_text = about_section.text
+        
+        job_description = driver.find_element_by_xpath("//section[@class='experience-section']//div[contains(@class,'description')]")
+        job_description_text = job_description.text
+        
+        recent_posts = driver.find_elements_by_xpath("//section[@class='recent-activity-section']//article")
+        recent_posts_text = [post.text for post in recent_posts]
+        
+        print("About Us section:", about_text)
+        print("Job Description:", job_description_text)
+        print("Recent Posts:")
+        for post in recent_posts_text:
+            print(post)
+        print("----------------------------")
+        
+    driver.quit()
+
+def generate_message(profile_data):
+    
+    # Example: Generate a message using string templating
+    message_template = "Hello {name}, I noticed your recent post about {topic}, and I found it very interesting. Looking forward to connecting with you! Best regards, [Your Name]"
+    
+    name = profile_data['name']
+    topic = profile_data['recent_post_topic']
+    interest = profile_data['shared_interest']
+    
+    message = message_template.format(name=name, topic=topic, interest=interest)
+    
+    return message
+
+def send_connection_request(connection, message):
+    
+    driver = webdriver.Chrome('path_to_chromedriver')
+    
+    driver.get('https://www.linkedin.com')
+
+    driver.get(connection['profile_url'])
+    
+    connect_button = driver.find_element_by_xpath("//button[@aria-label='Connect']")
+    connect_button.click()
+    message_input = driver.find_element_by_xpath("//textarea[@aria-label='Add a note']")
+    message_input.send_keys(message)
+    
+    send_button = driver.find_element_by_xpath("//button[@aria-label='Send invitation']")
+    send_button.click()
+    
+    driver.quit()
+
+def main():
+    new_connections = monitor_competitors_activity()
+    
+    analyze_profiles(new_connections)
+    
+    profile_data = {
+        'name': 'Aryan Singh',
+        'recent_post_topic': 'artificial intelligence',
+        'shared_interest': 'machine learning'
+    }
+    
+    message = generate_message(profile_data)
+
+    connection = {
+        'profile_url': 'https://www.linkedin.com/in/connection-profile-url'
+    }
+    
+    send_connection_request(connection, message)
+if __name__ == '__main__':
+    main()
